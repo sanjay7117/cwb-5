@@ -18,6 +18,9 @@ export default function Canvas({ canvasData, onSave, onClear, isCreator }: Canva
   const [currentLineWidth, setCurrentLineWidth] = useState(3);
   const [history, setHistory] = useState<ImageData[]>([]);
   const [historyStep, setHistoryStep] = useState(-1);
+  const [showCursor, setShowCursor] = useState(true);
+  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const [isHovering, setIsHovering] = useState(false);
 
   useEffect(() => {
     const canvas = canvasRef.current;

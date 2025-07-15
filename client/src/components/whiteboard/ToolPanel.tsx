@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Slider } from "@/components/ui/slider";
+import { Badge } from "@/components/ui/badge";
 import { 
   Edit3, 
   Square, 
@@ -9,25 +10,29 @@ import {
   Minus, 
   Triangle, 
   ArrowRight,
-  Smile
+  Smile,
+  Star,
+  Palette
 } from "lucide-react";
 
 interface ToolPanelProps {
   onEmojiClick: () => void;
+  onToolChange?: (tool: string, color: string, lineWidth: number) => void;
 }
 
-export default function ToolPanel({ onEmojiClick }: ToolPanelProps) {
+export default function ToolPanel({ onEmojiClick, onToolChange }: ToolPanelProps) {
   const [selectedTool, setSelectedTool] = useState("pen");
   const [selectedColor, setSelectedColor] = useState("#6366F1");
   const [lineWidth, setLineWidth] = useState(3);
+  const [isAnimating, setIsAnimating] = useState(false);
 
   const tools = [
-    { id: "pen", icon: Edit3, label: "Pen Tool" },
-    { id: "rectangle", icon: Square, label: "Rectangle" },
-    { id: "circle", icon: Circle, label: "Circle" },
-    { id: "line", icon: Minus, label: "Line" },
-    { id: "triangle", icon: Triangle, label: "Triangle" },
-    { id: "arrow", icon: ArrowRight, label: "Arrow" },
+    { id: "pen", icon: Edit3, label: "Pen Tool", shortcut: "P" },
+    { id: "rectangle", icon: Square, label: "Rectangle", shortcut: "R" },
+    { id: "circle", icon: Circle, label: "Circle", shortcut: "C" },
+    { id: "line", icon: Minus, label: "Line", shortcut: "L" },
+    { id: "triangle", icon: Triangle, label: "Triangle", shortcut: "T" },
+    { id: "arrow", icon: ArrowRight, label: "Arrow", shortcut: "A" },
   ];
 
   const colors = [
@@ -41,8 +46,17 @@ export default function ToolPanel({ onEmojiClick }: ToolPanelProps) {
     "#06B6D4", // cyan-500
   ];
 
+  // Notify parent component when tool changes
+  useEffect(() => {
+    if (onToolChange) {
+      onToolChange(selectedTool, selectedColor, lineWidth);
+    }
+  }, [selectedTool, selectedColor, lineWidth, onToolChange]);
+
   const handleToolSelect = (toolId: string) => {
     setSelectedTool(toolId);
+    setIsAnimating(true);
+    setTimeout(() => setIsAnimating(false), 300);
   };
 
   const handleColorSelect = (color: string) => {
@@ -65,15 +79,18 @@ export default function ToolPanel({ onEmojiClick }: ToolPanelProps) {
                 key={tool.id}
                 variant={selectedTool === tool.id ? "default" : "ghost"}
                 size="sm"
-                className={`p-2 ${
+                className={`p-2 relative group transition-all duration-200 ${
                   selectedTool === tool.id
-                    ? "bg-gradient-brand text-white hover:opacity-90"
-                    : "hover:bg-neutral-100"
-                }`}
+                    ? "bg-gradient-brand text-white hover:opacity-90 shadow-md transform scale-105"
+                    : "hover:bg-neutral-100 hover:scale-105"
+                } ${isAnimating && selectedTool === tool.id ? 'animate-pulse' : ''}`}
                 onClick={() => handleToolSelect(tool.id)}
-                title={tool.label}
+                title={`${tool.label} (${tool.shortcut})`}
               >
                 <Icon className="w-4 h-4" />
+                {selectedTool === tool.id && (
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-success rounded-full"></div>
+                )}
               </Button>
             );
           })}
@@ -88,11 +105,12 @@ export default function ToolPanel({ onEmojiClick }: ToolPanelProps) {
           {colors.map((color) => (
             <button
               key={color}
-              className={`w-6 h-6 rounded cursor-pointer hover:scale-110 transition-transform ${
-                selectedColor === color ? "ring-2 ring-neutral-400 ring-offset-1" : ""
+              className={`w-6 h-6 rounded-lg cursor-pointer hover:scale-110 transition-all duration-200 hover:shadow-lg ${
+                selectedColor === color ? "ring-2 ring-neutral-400 ring-offset-1 shadow-md" : "hover:ring-1 hover:ring-neutral-300"
               }`}
               style={{ backgroundColor: color }}
               onClick={() => handleColorSelect(color)}
+              title={`Color: ${color}`}
             />
           ))}
         </div>

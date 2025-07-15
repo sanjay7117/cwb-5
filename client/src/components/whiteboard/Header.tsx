@@ -13,8 +13,8 @@ interface HeaderProps {
 export default function Header({ room, participants, onShare }: HeaderProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const getInitials = (userId: string) => {
-    return userId.substring(0, 2).toUpperCase();
+  const getInitials = (displayName: string) => {
+    return displayName.substring(0, 2).toUpperCase();
   };
 
   const getAvatarColor = (userId: string) => {
@@ -63,9 +63,10 @@ export default function Header({ room, participants, onShare }: HeaderProps) {
             {participants.slice(0, 3).map((participant) => (
               <div
                 key={participant.id}
-                className={`w-8 h-8 rounded-full ${getAvatarColor(participant.userId)} flex items-center justify-center text-white text-sm font-medium border-2 border-white`}
+                className={`w-8 h-8 rounded-full ${getAvatarColor(participant.userId)} flex items-center justify-center text-white text-sm font-medium border-2 border-white hover:scale-110 transition-transform cursor-pointer`}
+                title={participant.displayName}
               >
-                {getInitials(participant.userId)}
+                {getInitials(participant.displayName)}
               </div>
             ))}
             {participants.length > 3 && (
@@ -116,9 +117,9 @@ export default function Header({ room, participants, onShare }: HeaderProps) {
                     {participants.map((participant) => (
                       <div key={participant.id} className="flex items-center space-x-3">
                         <div className={`w-6 h-6 rounded-full ${getAvatarColor(participant.userId)} flex items-center justify-center text-white text-xs font-medium`}>
-                          {getInitials(participant.userId)}
+                          {getInitials(participant.displayName)}
                         </div>
-                        <span className="text-sm">{participant.userId}</span>
+                        <span className="text-sm">{participant.displayName}</span>
                       </div>
                     ))}
                   </div>

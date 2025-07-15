@@ -24,6 +24,7 @@ export interface IStorage {
   createRoom(room: InsertRoom): Promise<Room>;
   getRoomByCode(code: string): Promise<Room | undefined>;
   updateRoom(id: number, updates: Partial<Room>): Promise<Room>;
+  validateRoomPassword(code: string, password: string): Promise<boolean>;
   
   // Canvas data operations
   saveCanvasData(data: InsertCanvasData): Promise<CanvasData>;
@@ -89,16 +90,18 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getCanvasData(roomId: number, since?: Date): Promise<CanvasData[]> {
-    let query = db.select().from(canvasData).where(eq(canvasData.roomId, roomId));
-    
     if (since) {
-      query = query.where(and(
-        eq(canvasData.roomId, roomId),
-        gte(canvasData.timestamp, since)
-      ));
+      return await db.select().from(canvasData)
+        .where(and(
+          eq(canvasData.roomId, roomId),
+          gte(canvasData.timestamp, since)
+        ))
+        .orderBy(desc(canvasData.timestamp));
     }
     
-    return await query.orderBy(desc(canvasData.timestamp));
+    return await db.select().from(canvasData)
+      .where(eq(canvasData.roomId, roomId))
+      .orderBy(desc(canvasData.timestamp));
   }
 
   async clearCanvasData(roomId: number): Promise<void> {
@@ -154,6 +157,18 @@ export class DatabaseStorage implements IStorage {
           gte(roomParticipants.lastSeen, fiveMinutesAgo)
         )
       );
+  }
+
+  // Validate room password
+  async validateRoomPassword(code: string, password: string): Promise<boolean> {
+    const room = await this.getRoomByCode(code);
+    if (!room) return false;
+    
+    // If room is public, no password needed
+    if (room.isPublic) return true;
+    
+    // For private rooms, check password
+    return room.password === password;
   }
 
   // Generate unique room code

@@ -24,6 +24,8 @@ export default function RoomPage() {
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const [lastSync, setLastSync] = useState(new Date());
+  const [currentTool, setCurrentTool] = useState("pen");
+  const [currentColor, setCurrentColor] = useState("#6366F1");
 
   // Fetch room data
   const { data: room, isLoading: roomLoading, error: roomError } = useQuery({
@@ -173,6 +175,49 @@ export default function RoomPage() {
     clearCanvasMutation.mutate();
   };
 
+  // Handle tool change with interactive feedback
+  const handleToolChange = (tool: string, color: string, lineWidth: number) => {
+    if (tool !== currentTool) {
+      setCurrentTool(tool);
+      toast({
+        title: `${tool.charAt(0).toUpperCase() + tool.slice(1)} Tool Selected`,
+        description: `Now drawing with ${tool}`,
+        duration: 2000,
+      });
+    }
+    if (color !== currentColor) {
+      setCurrentColor(color);
+    }
+  };
+
+  // Handle emoji selection with feedback
+  const handleEmojiSelect = (emoji: string) => {
+    // Add emoji to canvas center
+    const canvas = document.querySelector("canvas") as HTMLCanvasElement;
+    if (canvas) {
+      const rect = canvas.getBoundingClientRect();
+      const x = rect.width / 2;
+      const y = rect.height / 2;
+      
+      saveCanvasDataMutation.mutate({
+        tool: "emoji",
+        data: {
+          x,
+          y,
+          emoji,
+        },
+      });
+      
+      toast({
+        title: "Emoji Added!",
+        description: `Added ${emoji} to the canvas`,
+        duration: 1500,
+      });
+    }
+    
+    setShowEmojiPicker(false);
+  };
+
   if (roomLoading) {
     return (
       <div className="min-h-screen bg-gradient-page">
@@ -223,6 +268,7 @@ export default function RoomPage() {
           <div className="relative">
             <ToolPanel
               onEmojiClick={() => setShowEmojiPicker(true)}
+              onToolChange={handleToolChange}
             />
             
             <Canvas
@@ -244,10 +290,7 @@ export default function RoomPage() {
       {showEmojiPicker && (
         <EmojiPicker
           onClose={() => setShowEmojiPicker(false)}
-          onEmojiSelect={(emoji) => {
-            // Handle emoji selection
-            setShowEmojiPicker(false);
-          }}
+          onEmojiSelect={handleEmojiSelect}
         />
       )}
 

@@ -135,4 +135,99 @@
   .bg-success { background-color: var(--success); }
   
   .cursor-crosshair { cursor: crosshair; }
+  
+  /* Interactive animations */
+  @keyframes bounce-in {
+    0% {
+      transform: scale(0.3);
+      opacity: 0;
+    }
+    50% {
+      transform: scale(1.05);
+    }
+    70% {
+      transform: scale(0.9);
+    }
+    100% {
+      transform: scale(1);
+      opacity: 1;
+    }
+  }
+
+  @keyframes slide-in-up {
+    0% {
+      transform: translateY(100%);
+      opacity: 0;
+    }
+    100% {
+      transform: translateY(0);
+      opacity: 1;
+    }
+  }
+
+  @keyframes wiggle {
+    0%, 7% {
+      transform: rotateZ(0);
+    }
+    15% {
+      transform: rotateZ(-15deg);
+    }
+    20% {
+      transform: rotateZ(10deg);
+    }
+    25% {
+      transform: rotateZ(-10deg);
+    }
+    30% {
+      transform: rotateZ(6deg);
+    }
+    35% {
+      transform: rotateZ(-4deg);
+    }
+    40%, 100% {
+      transform: rotateZ(0);
+    }
+  }
+
+  @keyframes glow {
+    0%, 100% {
+      box-shadow: 0 0 5px rgba(99, 102, 241, 0.3);
+    }
+    50% {
+      box-shadow: 0 0 20px rgba(99, 102, 241, 0.8);
+    }
+  }
+
+  .animate-bounce-in {
+    animation: bounce-in 0.5s ease-out;
+  }
+
+  .animate-slide-in-up {
+    animation: slide-in-up 0.3s ease-out;
+  }
+
+  .animate-wiggle {
+    animation: wiggle 0.5s ease-in-out;
+  }
+
+  .animate-glow {
+    animation: glow 2s ease-in-out infinite;
+  }
+
+  .tool-active {
+    animation: wiggle 0.5s ease-in-out;
+  }
+
+  .emoji-hover {
+    transition: transform 0.2s ease, background-color 0.2s ease;
+  }
+
+  .emoji-hover:hover {
+    transform: scale(1.2) rotate(5deg);
+    background-color: rgba(99, 102, 241, 0.1);
+  }
+
+  .drawing-cursor {
+    cursor: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><circle cx="10" cy="10" r="8" fill="rgba(99, 102, 241, 0.3)" stroke="rgba(99, 102, 241, 0.8)" stroke-width="2"/></svg>'), auto;
+  }
 }

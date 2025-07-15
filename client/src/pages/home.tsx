@@ -4,11 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useAuth } from "@/hooks/useAuth";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { isUnauthorizedError } from "@/lib/authUtils";
-import { Palette, Plus, Hash, LogOut, Users } from "lucide-react";
+import { Palette, Plus, Hash, LogOut, Users, Lock, Globe } from "lucide-react";
 import { useLocation } from "wouter";
 
 export default function Home() {
@@ -16,9 +18,21 @@ export default function Home() {
   const { toast } = useToast();
   const [, navigate] = useLocation();
   const [roomCode, setRoomCode] = useState("");
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [showJoinDialog, setShowJoinDialog] = useState(false);
+  
+  // Create room form state
+  const [isPublic, setIsPublic] = useState(true);
+  const [roomPassword, setRoomPassword] = useState("");
+  const [displayName, setDisplayName] = useState(user?.firstName || "");
+  
+  // Join room form state
+  const [joinRoomCode, setJoinRoomCode] = useState("");
+  const [joinPassword, setJoinPassword] = useState("");
+  const [joinDisplayName, setJoinDisplayName] = useState(user?.firstName || "");
 
   const createRoomMutation = useMutation({
-    mutationFn: async (data: { isPublic: boolean; allowDrawing: boolean }) => {
+    mutationFn: async (data: { isPublic: boolean; password?: string; displayName: string }) => {
       const res = await apiRequest("POST", "/api/rooms", data);
       return res.json();
     },
@@ -27,6 +41,7 @@ export default function Home() {
         title: "Room Created",
         description: `Room ${room.code} created successfully!`,
       });
+      setShowCreateDialog(false);
       navigate(`/room/${room.code}`);
     },
     onError: (error) => {
@@ -49,15 +64,78 @@ export default function Home() {
     },
   });
 
+  const joinRoomMutation = useMutation({
+    mutationFn: async (data: { code: string; password?: string; displayName: string }) => {
+      const res = await apiRequest("POST", `/api/rooms/${data.code}/join`, {
+        password: data.password,
+        displayName: data.displayName,
+      });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Joined Room",
+        description: `Successfully joined room ${joinRoomCode}!`,
+      });
+      setShowJoinDialog(false);
+      navigate(`/room/${joinRoomCode}`);
+    },
+    onError: (error) => {
+      if (isUnauthorizedError(error)) {
+        toast({
+          title: "Unauthorized",
+          description: "You are logged out. Logging in again...",
+          variant: "destructive",
+        });
+        setTimeout(() => {
+          window.location.href = "/api/login";
+        }, 500);
+        return;
+      }
+      if (error.message.includes("Invalid password")) {
+        toast({
+          title: "Invalid Password",
+          description: "The password you entered is incorrect.",
+          variant: "destructive",
+        });
+        return;
+      }
+      toast({
+        title: "Error",
+        description: "Failed to join room. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleCreateRoom = () => {
+    if (!displayName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter your display name",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!isPublic && !roomPassword.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a password for the private room",
+        variant: "destructive",
+      });
+      return;
+    }
+
     createRoomMutation.mutate({
-      isPublic: true,
-      allowDrawing: true,
+      isPublic,
+      password: isPublic ? undefined : roomPassword,
+      displayName: displayName.trim(),
     });
   };
 
   const handleJoinRoom = () => {
-    if (!roomCode.trim()) {
+    if (!joinRoomCode.trim()) {
       toast({
         title: "Error",
         description: "Please enter a room code",
@@ -65,7 +143,21 @@ export default function Home() {
       });
       return;
     }
-    navigate(`/room/${roomCode.trim().toUpperCase()}`);
+    
+    if (!joinDisplayName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter your display name",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    joinRoomMutation.mutate({
+      code: joinRoomCode.trim().toUpperCase(),
+      password: joinPassword.trim() || undefined,
+      displayName: joinDisplayName.trim(),
+    });
   };
 
   const handleLogout = () => {
@@ -110,13 +202,72 @@ export default function Home() {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button
-                onClick={handleCreateRoom}
-                disabled={createRoomMutation.isPending}
-                className="w-full bg-gradient-brand hover:opacity-90 text-white"
-              >
-                {createRoomMutation.isPending ? "Creating..." : "Create Room"}
-              </Button>
+              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+                <DialogTrigger asChild>
+                  <Button className="w-full bg-gradient-brand hover:opacity-90 text-white">
+                    Create Room
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Create New Room</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="create-display-name">Your Display Name</Label>
+                      <Input
+                        id="create-display-name"
+                        type="text"
+                        placeholder="Enter your name"
+                        value={displayName}
+                        onChange={(e) => setDisplayName(e.target.value)}
+                      />
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      <Switch
+                        id="room-type"
+                        checked={isPublic}
+                        onCheckedChange={setIsPublic}
+                      />
+                      <Label htmlFor="room-type" className="flex items-center space-x-2">
+                        {isPublic ? (
+                          <>
+                            <Globe className="w-4 h-4 text-green-600" />
+                            <span>Public Room</span>
+                          </>
+                        ) : (
+                          <>
+                            <Lock className="w-4 h-4 text-purple-600" />
+                            <span>Private Room</span>
+                          </>
+                        )}
+                      </Label>
+                    </div>
+                    
+                    {!isPublic && (
+                      <div>
+                        <Label htmlFor="room-password">Room Password</Label>
+                        <Input
+                          id="room-password"
+                          type="password"
+                          placeholder="Enter password for private room"
+                          value={roomPassword}
+                          onChange={(e) => setRoomPassword(e.target.value)}
+                        />
+                      </div>
+                    )}
+                    
+                    <Button
+                      onClick={handleCreateRoom}
+                      disabled={createRoomMutation.isPending}
+                      className="w-full bg-gradient-brand hover:opacity-90 text-white"
+                    >
+                      {createRoomMutation.isPending ? "Creating..." : "Create Room"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
 
@@ -131,31 +282,62 @@ export default function Home() {
                 Enter a room code to join a session
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <Label htmlFor="roomCode">Room Code</Label>
-                <Input
-                  id="roomCode"
-                  type="text"
-                  placeholder="Enter room code (e.g., ABC123)"
-                  value={roomCode}
-                  onChange={(e) => setRoomCode(e.target.value.toUpperCase())}
-                  className="text-center font-mono"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleJoinRoom();
-                    }
-                  }}
-                />
-              </div>
-              <Button
-                onClick={handleJoinRoom}
-                disabled={!roomCode.trim()}
-                className="w-full"
-                variant="outline"
-              >
-                Join Room
-              </Button>
+            <CardContent>
+              <Dialog open={showJoinDialog} onOpenChange={setShowJoinDialog}>
+                <DialogTrigger asChild>
+                  <Button className="w-full" variant="outline">
+                    Join Room
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>Join Room</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="join-room-code">Room Code</Label>
+                      <Input
+                        id="join-room-code"
+                        type="text"
+                        placeholder="Enter room code (e.g., ABC123)"
+                        value={joinRoomCode}
+                        onChange={(e) => setJoinRoomCode(e.target.value.toUpperCase())}
+                        className="text-center font-mono"
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="join-display-name">Your Display Name</Label>
+                      <Input
+                        id="join-display-name"
+                        type="text"
+                        placeholder="Enter your name"
+                        value={joinDisplayName}
+                        onChange={(e) => setJoinDisplayName(e.target.value)}
+                      />
+                    </div>
+                    
+                    <div>
+                      <Label htmlFor="join-password">Password (if private room)</Label>
+                      <Input
+                        id="join-password"
+                        type="password"
+                        placeholder="Enter password (leave empty for public rooms)"
+                        value={joinPassword}
+                        onChange={(e) => setJoinPassword(e.target.value)}
+                      />
+                    </div>
+                    
+                    <Button
+                      onClick={handleJoinRoom}
+                      disabled={joinRoomMutation.isPending}
+                      className="w-full bg-gradient-brand hover:opacity-90 text-white"
+                    >
+                      {joinRoomMutation.isPending ? "Joining..." : "Join Room"}
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </CardContent>
           </Card>
         </div>

@@ -41,6 +41,7 @@ export const rooms = pgTable("rooms", {
   code: varchar("code", { length: 10 }).unique().notNull(),
   createdBy: varchar("created_by").notNull(),
   isPublic: boolean("is_public").default(true),
+  password: varchar("password"), // For private rooms
   allowDrawing: boolean("allow_drawing").default(true),
   createdAt: timestamp("created_at").defaultNow(),
   updatedAt: timestamp("updated_at").defaultNow(),
@@ -61,6 +62,7 @@ export const roomParticipants = pgTable("room_participants", {
   id: serial("id").primaryKey(),
   roomId: integer("room_id").notNull(),
   userId: varchar("user_id").notNull(),
+  displayName: varchar("display_name").notNull(), // Name to display in room
   joinedAt: timestamp("joined_at").defaultNow(),
   lastSeen: timestamp("last_seen").defaultNow(),
 });

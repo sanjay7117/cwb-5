@@ -30,16 +30,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const roomData = insertRoomSchema.parse({
         code,
         createdBy: userId,
-        isPublic: req.body.isPublic || true,
-        allowDrawing: req.body.allowDrawing || true,
+        isPublic: req.body.isPublic !== false, // Default to true
+        password: req.body.isPublic === false ? req.body.password : null,
+        allowDrawing: req.body.allowDrawing !== false, // Default to true
       });
       
       const room = await storage.createRoom(roomData);
       
-      // Join the creator to the room
+      // Join the creator to the room with their display name
+      const user = await storage.getUser(userId);
+      const displayName = req.body.displayName || user?.firstName || 'User';
+      
       await storage.joinRoom({
         roomId: room.id,
         userId,
+        displayName,
       });
       
       res.json(room);
@@ -71,9 +76,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ message: "Room not found" });
       }
       
+      // Validate password for private rooms
+      if (!room.isPublic) {
+        const isValidPassword = await storage.validateRoomPassword(req.params.code, req.body.password);
+        if (!isValidPassword) {
+          return res.status(401).json({ message: "Invalid password" });
+        }
+      }
+      
+      const user = await storage.getUser(userId);
+      const displayName = req.body.displayName || user?.firstName || 'User';
+      
       const participant = await storage.joinRoom({
         roomId: room.id,
         userId,
+        displayName,
       });
       
       res.json(participant);
